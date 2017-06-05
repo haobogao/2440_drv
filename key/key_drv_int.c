@@ -32,10 +32,11 @@ volatile unsigned long * ioaddr_gpgdat = NULL;
 #define KEY_MINOR	0
 
 
-static int major = 0;
+
 static int count_button = 4;
 //the device num
-static dev_t dev_num;
+static dev_t dev_num;	//use this storge the device number.
+static int major = 0;	//if there are no paramer send in.major would be zero.
 module_param(major,int,S_IRUGO);
 
 static DECLARE_WAIT_QUEUE_HEAD(button_wq);
