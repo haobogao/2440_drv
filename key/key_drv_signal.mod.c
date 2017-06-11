@@ -20,4 +20,4 @@ __attribute__((section(".modinfo"))) =
 "depends=built-in,built-in,built-in,built-in,built-in,built-in";
 
 
-MODULE_INFO(srcversion, "1BE6050C62EA2F511051294");
+MODULE_INFO(srcversion, "1D5321D5AE2B149B1A1E671");

@@ -1,9 +1,9 @@
 #Makefile
 # Created on: May 11, 2017
 #     Author: haobo
-KVERS =/home/haobo/linux_2.26_eclipse_project/
+KVERS =/home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/
 
-obj-m += key_drv_int.o
+obj-m += key_drv_signal.o
 
 all:kernel_modules
 kernel_modules:
