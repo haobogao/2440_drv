@@ -26,7 +26,7 @@ static int major = 0;	//if there are no paramer send in.major would be zero.
 module_param(major,int,S_IRUGO);
 
 
-
+struct fasync_struct
 /*
  *@brief:	 this is a  struct to describe your own
  *	char device.

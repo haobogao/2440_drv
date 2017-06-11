@@ -1,14 +1,14 @@
-cmd_/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.o := arm-linux-gcc -Wp,-MD,/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/.key_drv_int.mod.o.d  -nostdinc -isystem /opt/gcc-3.4.5-glibc-2.3.6/bin/../lib/gcc/arm-linux/3.4.5/include -D__KERNEL__ -Iinclude  -include include/linux/autoconf.h -mlittle-endian -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Os -marm -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mapcs-32 -mno-thumb-interwork -D__LINUX_ARM_ARCH__=4 -march=armv4t -mtune=arm9tdmi -malignment-traps -msoft-float -Uarm -fno-omit-frame-pointer -fno-optimize-sibling-calls -g  -Wdeclaration-after-statement     -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(key_drv_int.mod)"  -D"KBUILD_MODNAME=KBUILD_STR(key_drv_int)" -DMODULE -c -o /home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.o /home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.c
+cmd_/home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.o := arm-linux-gcc -Wp,-MD,/home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/.key_drv_signal.o.d  -nostdinc -isystem /usr/local/arm/3.4.1/lib/gcc/arm-linux/3.4.1/include -D__KERNEL__ -Iinclude  -include include/linux/autoconf.h -mlittle-endian -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Os -marm -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mapcs-32 -mno-thumb-interwork -D__LINUX_ARM_ARCH__=4 -march=armv4t -mtune=arm9tdmi -malignment-traps -msoft-float -Uarm -fno-omit-frame-pointer -fno-optimize-sibling-calls -g  -Wdeclaration-after-statement    -DMODULE -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(key_drv_signal)"  -D"KBUILD_MODNAME=KBUILD_STR(key_drv_signal)" -c -o /home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.o /home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.c
 
-deps_/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.o := \
-  /home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.c \
-    $(wildcard include/config/module/unload.h) \
+deps_/home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.o := \
+  /home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.c \
   include/linux/module.h \
     $(wildcard include/config/modules.h) \
     $(wildcard include/config/modversions.h) \
     $(wildcard include/config/unused/symbols.h) \
     $(wildcard include/config/kgdb.h) \
     $(wildcard include/config/generic/bug.h) \
+    $(wildcard include/config/module/unload.h) \
     $(wildcard include/config/kallsyms.h) \
     $(wildcard include/config/sysfs.h) \
   include/linux/spinlock.h \
@@ -72,7 +72,7 @@ deps_/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.
     $(wildcard include/config/debug/spinlock/sleep.h) \
     $(wildcard include/config/printk.h) \
     $(wildcard include/config/numa.h) \
-  /opt/gcc-3.4.5-glibc-2.3.6/bin/../lib/gcc/arm-linux/3.4.5/include/stdarg.h \
+  /usr/local/arm/3.4.1/lib/gcc/arm-linux/3.4.1/include/stdarg.h \
   include/linux/stddef.h \
   include/linux/types.h \
     $(wildcard include/config/uid16.h) \
@@ -218,9 +218,181 @@ deps_/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.
     $(wildcard include/config/cpu/s3c2443.h) \
   include/linux/irq_cpustat.h \
   include/asm/module.h \
-  include/linux/vermagic.h \
-  include/linux/utsrelease.h \
+  include/linux/fs.h \
+    $(wildcard include/config/dnotify.h) \
+    $(wildcard include/config/quota.h) \
+    $(wildcard include/config/inotify.h) \
+    $(wildcard include/config/security.h) \
+    $(wildcard include/config/epoll.h) \
+    $(wildcard include/config/auditsyscall.h) \
+    $(wildcard include/config/block.h) \
+    $(wildcard include/config/fs/xip.h) \
+    $(wildcard include/config/migration.h) \
+  include/linux/limits.h \
+  include/linux/ioctl.h \
+  include/asm/ioctl.h \
+  include/asm-generic/ioctl.h \
+  include/linux/kdev_t.h \
+  include/linux/dcache.h \
+    $(wildcard include/config/profiling.h) \
+  include/linux/rcupdate.h \
+  include/linux/namei.h \
+  include/linux/radix-tree.h \
+  include/linux/prio_tree.h \
+  include/linux/pid.h \
+  include/asm/semaphore.h \
+  include/asm/locks.h \
+  include/linux/quota.h \
+  include/linux/dqblk_xfs.h \
+  include/linux/dqblk_v1.h \
+  include/linux/dqblk_v2.h \
+  include/linux/nfs_fs_i.h \
+  include/linux/nfs.h \
+  include/linux/sunrpc/msg_prot.h \
+  include/linux/fcntl.h \
+  include/asm/fcntl.h \
+  include/asm-generic/fcntl.h \
+    $(wildcard include/config/64bit.h) \
+  include/linux/err.h \
+  include/linux/cdev.h \
+  include/linux/io.h \
+    $(wildcard include/config/has/ioport.h) \
+  include/asm/io.h \
+  include/asm/arch/io.h \
+  include/asm/hardware.h \
+  include/asm/arch/hardware.h \
+    $(wildcard include/config/cpu/s3c2440.h) \
+    $(wildcard include/config/no/multiword/io.h) \
+  include/asm/arch/map.h \
+    $(wildcard include/config/cpu/s3c2412.h) \
+    $(wildcard include/config/cpu/s3c2413.h) \
+    $(wildcard include/config/cpu/s3c2412/only.h) \
+  include/linux/uaccess.h \
+  include/asm/uaccess.h \
+  include/linux/sched.h \
+    $(wildcard include/config/no/hz.h) \
+    $(wildcard include/config/detect/softlockup.h) \
+    $(wildcard include/config/split/ptlock/cpus.h) \
+    $(wildcard include/config/keys.h) \
+    $(wildcard include/config/bsd/process/acct.h) \
+    $(wildcard include/config/taskstats.h) \
+    $(wildcard include/config/inotify/user.h) \
+    $(wildcard include/config/schedstats.h) \
+    $(wildcard include/config/task/delay/acct.h) \
+    $(wildcard include/config/blk/dev/io/trace.h) \
+    $(wildcard include/config/cc/stackprotector.h) \
+    $(wildcard include/config/sysvipc.h) \
+    $(wildcard include/config/rt/mutexes.h) \
+    $(wildcard include/config/task/xacct.h) \
+    $(wildcard include/config/cpusets.h) \
+    $(wildcard include/config/compat.h) \
+    $(wildcard include/config/fault/injection.h) \
+  include/asm/param.h \
+    $(wildcard include/config/hz.h) \
+  include/linux/capability.h \
+  include/linux/timex.h \
+    $(wildcard include/config/time/interpolation.h) \
+  include/asm/timex.h \
+  include/asm/arch/timex.h \
+  include/linux/jiffies.h \
+  include/linux/calc64.h \
+  include/asm/div64.h \
+  include/linux/rbtree.h \
+  include/asm/mmu.h \
+    $(wildcard include/config/cpu/has/asid.h) \
+  include/asm/cputime.h \
+  include/asm-generic/cputime.h \
+  include/linux/sem.h \
+  include/linux/ipc.h \
+    $(wildcard include/config/ipc/ns.h) \
+  include/asm/ipcbuf.h \
+  include/asm/sembuf.h \
+  include/linux/signal.h \
+  include/asm/signal.h \
+  include/asm-generic/signal.h \
+  include/asm/sigcontext.h \
+  include/asm/siginfo.h \
+  include/asm-generic/siginfo.h \
+  include/linux/securebits.h \
+  include/linux/fs_struct.h \
+  include/linux/completion.h \
+  include/linux/seccomp.h \
+    $(wildcard include/config/seccomp.h) \
+  include/linux/futex.h \
+    $(wildcard include/config/futex.h) \
+  include/linux/rtmutex.h \
+    $(wildcard include/config/debug/rt/mutexes.h) \
+  include/linux/plist.h \
+    $(wildcard include/config/debug/pi/list.h) \
+  include/linux/param.h \
+  include/linux/resource.h \
+  include/asm/resource.h \
+  include/asm-generic/resource.h \
+  include/linux/timer.h \
+    $(wildcard include/config/timer/stats.h) \
+  include/linux/ktime.h \
+    $(wildcard include/config/ktime/scalar.h) \
+  include/linux/hrtimer.h \
+    $(wildcard include/config/high/res/timers.h) \
+  include/linux/task_io_accounting.h \
+    $(wildcard include/config/task/io/accounting.h) \
+  include/linux/aio.h \
+  include/linux/workqueue.h \
+  include/linux/aio_abi.h \
+  include/linux/uio.h \
+  include/linux/netlink.h \
+  include/linux/socket.h \
+    $(wildcard include/config/proc/fs.h) \
+  include/asm/socket.h \
+  include/asm/sockios.h \
+  include/linux/sockios.h \
+  include/linux/skbuff.h \
+    $(wildcard include/config/nf/conntrack.h) \
+    $(wildcard include/config/bridge/netfilter.h) \
+    $(wildcard include/config/vlan/8021q.h) \
+    $(wildcard include/config/net/sched.h) \
+    $(wildcard include/config/net/cls/act.h) \
+    $(wildcard include/config/net/dma.h) \
+    $(wildcard include/config/network/secmark.h) \
+  include/linux/net.h \
+    $(wildcard include/config/sysctl.h) \
+  include/linux/random.h \
+  include/linux/sysctl.h \
+  include/linux/textsearch.h \
+  include/net/checksum.h \
+  include/asm/checksum.h \
+  include/linux/in6.h \
+  include/linux/dmaengine.h \
+    $(wildcard include/config/dma/engine.h) \
+  include/linux/device.h \
+    $(wildcard include/config/debug/devres.h) \
+  include/linux/ioport.h \
+  include/linux/klist.h \
+  include/linux/pm.h \
+    $(wildcard include/config/pm.h) \
+  include/asm/device.h \
+    $(wildcard include/config/dmabounce.h) \
+  include/linux/irq.h \
+    $(wildcard include/config/s390.h) \
+    $(wildcard include/config/irq/per/cpu.h) \
+    $(wildcard include/config/irq/release/method.h) \
+    $(wildcard include/config/generic/pending/irq.h) \
+    $(wildcard include/config/irqbalance.h) \
+    $(wildcard include/config/auto/irq/affinity.h) \
+    $(wildcard include/config/generic/hardirqs/no//do/irq.h) \
+  include/linux/irqreturn.h \
+  include/asm/irq_regs.h \
+  include/asm-generic/irq_regs.h \
+  include/asm/hw_irq.h \
+    $(wildcard include/config/no/idle/hz.h) \
+  include/asm/mach/irq.h \
+  include/linux/interrupt.h \
+    $(wildcard include/config/generic/irq/probe.h) \
+  include/asm/arch/regs-gpio.h \
+  include/linux/poll.h \
+  include/asm/poll.h \
+  include/asm-generic/poll.h \
 
-/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.o: $(deps_/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.o)
+/home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.o: $(deps_/home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.o)
 
-$(deps_/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/key/key_drv_int.mod.o):
+$(deps_/home/haobo/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/drivers/drvtest/2440_driver/key/key_drv_signal.o):
