@@ -9,8 +9,10 @@
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
 #include <linux/fs.h>
+#include <linux/irq.h>
 
 
+struct resource t;
 
 
 #define NUMBEROF_CHAR_DEVICE 1
@@ -37,8 +39,6 @@ struct char_dev_t {
 
 //the global char device pointer
 struct char_dev_t * char_dev_p;
-
-
 
 
 //int (*open) (struct inode *, struct file *);
