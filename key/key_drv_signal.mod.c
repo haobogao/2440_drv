@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include <linux/module.h>
 #include <linux/vermagic.h>
 #include <linux/compiler.h>
@@ -21,3 +22,28 @@ __attribute__((section(".modinfo"))) =
 
 
 MODULE_INFO(srcversion, "1D5321D5AE2B149B1A1E671");
+=======
+#include <linux/module.h>
+#include <linux/vermagic.h>
+#include <linux/compiler.h>
+
+MODULE_INFO(vermagic, VERMAGIC_STRING);
+
+struct module __this_module
+__attribute__((section(".gnu.linkonce.this_module"))) = {
+ .name = KBUILD_MODNAME,
+ .init = init_module,
+#ifdef CONFIG_MODULE_UNLOAD
+ .exit = cleanup_module,
+#endif
+ .arch = MODULE_ARCH_INIT,
+};
+
+static const char __module_depends[]
+__attribute_used__
+__attribute__((section(".modinfo"))) =
+"depends=built-in,built-in,built-in,built-in,built-in,built-in";
+
+
+MODULE_INFO(srcversion, "4BA12C07D5DF7C23280C2F2");
+>>>>>>> 8bf2f8059bad9890f24d94cfe84dc0674a4d0a16
