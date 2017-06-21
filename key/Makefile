@@ -1,9 +1,9 @@
 #Makefile
 # Created on: May 11, 2017
 #     Author: haobo
-KVERS =/home/haobo/linux_2.26_eclipse_project/
+KVERS =~/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/
 
-obj-m +=key_atomic.o
+obj-m +=key_sem.o
 
 all:kernel_modules
 kernel_modules:

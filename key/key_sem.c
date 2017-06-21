@@ -20,6 +20,7 @@
 #include <asm/arch/regs-gpio.h>
 #include <linux/poll.h>
 #include <linux/errno.h>
+#include <asm/semaphore.h>
 
 volatile unsigned long * ioaddr_gpfcon = NULL;
 volatile unsigned long * ioaddr_gpgcon = NULL;
@@ -43,8 +44,6 @@ struct pin_t{
 	unsigned int pin_num;
 	unsigned char pin_val;
 	unsigned char stat;
-
-
 };
 
 struct key_dev_t {
@@ -63,25 +62,33 @@ static irqreturn_t handler_button(int irq,void * devid)
 	if(IRQ_EINT0 == irq){
 		printk(KERN_INFO"button1 clicked!\n");
 		p->pin.stat = KEY_STAT_DOWN;
+		printk(KERN_INFO"p is Ok!\n");
 		wake_up_interruptible(&(p->button_wq));
+		printk(KERN_INFO"weakup is Ok!\n");
 		kill_fasync(&(p->fasync_q), SIGIO, POLLIN);
 	}
 	if( IRQ_EINT2 == irq){
 			printk(KERN_INFO"button2 clicked!\n");
 			p->pin.stat = KEY_STAT_DOWN;
+			printk(KERN_INFO"p is Ok!\n");
 			wake_up_interruptible(&(p->button_wq));
+			printk(KERN_INFO"weakup is Ok!\n");
 			kill_fasync(&(p->fasync_q), SIGIO, POLLIN);
 	}
 	if( IRQ_EINT11 == irq){
 			printk(KERN_INFO"button3 clicked!\n");
 			p->pin.stat = KEY_STAT_DOWN;
+			printk(KERN_INFO"p is Ok!\n");
 			wake_up_interruptible(&(p->button_wq));
+			printk(KERN_INFO"weakup is Ok!\n");
 			kill_fasync(&(p->fasync_q), SIGIO, POLLIN);
 	}
 	if(IRQ_EINT19 == irq){
 			printk(KERN_INFO"button4 clicked!\n");
 			p->pin.stat = KEY_STAT_DOWN;
+			printk(KERN_INFO"p is Ok!\n");
 			wake_up_interruptible(&(p->button_wq));
+			printk(KERN_INFO"weakup is Ok!\n");
 			kill_fasync(&(p->fasync_q), SIGIO, POLLIN);
 	}
 	return IRQ_HANDLED;
@@ -100,19 +107,19 @@ int key_open(struct inode * Inode,struct file * File)
 	switch(mi){
 		case 0:{
 			File->private_data = &key_dev[0];
-			ret =request_irq(IRQ_EINT0, handler_button, IRQT_FALLING, "button1",(void*) (&key_dev[0]));
+			ret =request_irq(IRQ_EINT0, handler_button, IRQT_FALLING, "button1",(key_dev));
 		}break;
 		case 1:{
 			File->private_data = &key_dev[1];
-			ret =request_irq(IRQ_EINT2, handler_button, IRQT_FALLING, "button2",(void*) (&key_dev[1]));
+			ret =request_irq(IRQ_EINT2, handler_button, IRQT_FALLING, "button2",(key_dev+1));
 		}break;
 		case 2:{
 			File->private_data = &key_dev[2];
-			ret =request_irq(IRQ_EINT11, handler_button, IRQT_FALLING, "button3",(void*) (&key_dev[2]));
+			ret =request_irq(IRQ_EINT11, handler_button, IRQT_FALLING, "button3",(key_dev+2));
 		}break;
 		case 3:{
 			File->private_data = &key_dev[3];
-			ret =request_irq(IRQ_EINT19, handler_button, IRQT_FALLING, "button4",(void*) (&key_dev[3]));
+			ret =request_irq(IRQ_EINT19, handler_button, IRQT_FALLING, "button4",(key_dev+3));
 		}break;
 		default :break;
 
@@ -130,10 +137,10 @@ ssize_t key_read(struct file * File, char __user * buff, size_t size, loff_t * l
 		return -1;
 	}
 	down_interruptible(&(key->sem));
-	wait_event_interruptible(key_dev->button_wq,key.pin.stat);
+	wait_event_interruptible(key_dev->button_wq,key->pin.stat);
 
 	key->pin.stat = KEY_STAT_UP;
-	scan_val =key.pin.pin_val;
+	scan_val =key->pin.pin_val;
 
 	//printk(KERN_INFO"scan_val:%d",scan_val);
 	count = copy_to_user(buff, (const void *)&scan_val, 1);
@@ -145,7 +152,7 @@ ssize_t key_read(struct file * File, char __user * buff, size_t size, loff_t * l
 int key_release (struct inode * Inode, struct file * file)
 {
 	struct key_dev_t * key  = ( struct key_dev_t *) file->private_data;
-	free_irq(IRQ_EINT0, &key_dev);
+	free_irq(IRQ_EINT0, &key);
 	return 0;
 }
 /**
@@ -155,19 +162,19 @@ int key_release (struct inode * Inode, struct file * file)
     *@describe :
     *@BUG:
 */
-
 unsigned int key_poll(struct file * file, struct poll_table_struct *pt)
 {
+	struct key_dev_t * dev = (struct key_dev_t *)file->private_data;
 	unsigned int mask = 0;
-	poll_wait(file,&key_dev->button_wq,pt);
-	if(key_dev[0].pin.stat == KEY_STAT_DOWN)
+	poll_wait(file,&(dev->button_wq),pt);
+	if(dev->pin.stat == KEY_STAT_DOWN)
 		mask |= POLLIN|POLLRDNORM;
 	return mask;
 }
 
 int key_fasync(int fd, struct file * file, int mod)
 {
-	struct key_dev_t * dev = file->private_data;
+	struct key_dev_t * dev = (struct key_dev_t *)file->private_data;
 	return fasync_helper(fd, file, mod, &(dev->fasync_q));
 }
 
@@ -187,7 +194,7 @@ static struct file_operations key_ops={
 static struct class * chartest;
 static struct class_device * keydev;
 
-int key_set_up_cdev(struct key_dev_t * key_dev,int index)
+int __init key_set_up_cdev(struct key_dev_t * key_dev,int index)
 {
 	int err;
 	dev_t dev_num_ma_mi;
@@ -202,8 +209,9 @@ int key_set_up_cdev(struct key_dev_t * key_dev,int index)
 		printk(KERN_INFO"error to add_cdev!\n");
 		return err;
 	}
-	struct semaphore sem;
-	sem_init(&(key_dev->sem),1);
+	sema_init(&(key_dev->sem),1);
+	//init the wait queue
+	init_waitqueue_head(&key_dev->button_wq);
 	return 0;
 }
 
@@ -259,8 +267,7 @@ int __init key_init(void)
 		ret = -ENOMEM;
 		goto fail_malloc ;
 	}
-	//init the wait queue
-	init_waitqueue_head(&key_dev->button_wq);
+
 	return 0;
 fail_malloc:
 		unregister_chrdev_region(dev_num, count_button);
