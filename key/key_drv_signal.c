@@ -48,8 +48,9 @@ struct pin_t{
 
 struct key_dev_t {
 	struct cdev	 keydev;
-	struct pin_t pin[4];
+	struct pin_t pin;
 	struct fasync_struct * fasync_q;
+	atomic_t canopen;
 
 };
 static struct key_dev_t * key_dev;
@@ -60,26 +61,26 @@ static irqreturn_t handler_button(int irq,void * devid)
 	struct key_dev_t * p =( struct key_dev_t *) devid;
 	if(IRQ_EINT0 == irq){
 		printk(KERN_INFO"button1 clicked!\n");
-		p->pin[0].stat = KEY_STAT_DOWN;
+		p->pin.stat = KEY_STAT_DOWN;
 		wake_up_interruptible(&button_wq);
 		kill_fasync(&(p->fasync_q), SIGIO, POLLIN);
 		printk(KERN_INFO"SIGNAL_SENDED!\n");
 	}
 	if( IRQ_EINT2 == irq){
 			printk(KERN_INFO"button2 clicked!\n");
-			p->pin[1].stat = KEY_STAT_DOWN;
+			p->pin.stat = KEY_STAT_DOWN;
 			kill_fasync(&p->fasync_q, SIGIO, POLLIN);
 			wake_up_interruptible(&button_wq);
 	}
 	if( IRQ_EINT11 == irq){
 			printk(KERN_INFO"button3 clicked!\n");
-			p->pin[2].stat= KEY_STAT_DOWN;
+			p->pin.stat= KEY_STAT_DOWN;
 			kill_fasync(&p->fasync_q, SIGIO, POLLIN);
 			wake_up_interruptible(&button_wq);
 	}
 	if(IRQ_EINT19 == irq){
 			printk(KERN_INFO"button4 clicked!\n");
-			p->pin[3].stat= KEY_STAT_DOWN;
+			p->pin.stat= KEY_STAT_DOWN;
 			wake_up_interruptible(&button_wq);
 			kill_fasync(&p->fasync_q, SIGIO, POLLIN);
 	}
@@ -95,10 +96,17 @@ static irqreturn_t handler_button(int irq,void * devid)
 int key_open(struct inode * Inode,struct file * File)
 {
 	int mi = MINOR(Inode->i_rdev),ret = 0;
+
 	printk(KERN_INFO"COME\n...\n\n...\n...\n");
-	File->private_data = key_dev;
 	switch(mi){
 		case 0:{
+			if(!atomic_dec_and_test(&(key_dev->canopen))){
+				printk(KERN_INFO"can't open ,device busy! canopen = %d\n",key_dev->canopen);
+				atomic_inc(&(key_dev->canopen));
+				printk(KERN_INFO"can't open ,device busy! canopen = %d\n",key_dev->canopen);
+				return -EBUSY;
+			}
+			File->private_data = key_dev;
 			ret =request_irq(IRQ_EINT0, handler_button, IRQT_FALLING, "button1",(void*) (key_dev));
 			printk(KERN_INFO"COME\n...\n\n...\n...open successful\n");
 		}break;
@@ -114,7 +122,7 @@ int key_open(struct inode * Inode,struct file * File)
 		default :break;
 
 	}
-	return ret;
+	return 0;
 }
 
 //ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
@@ -127,25 +135,25 @@ ssize_t key_read(struct file * File, char __user * buff, size_t size, loff_t * l
 	}
 	switch(mi){
 		case 0:{
-			wait_event_interruptible(button_wq,key_dev->pin[0].stat);
+			wait_event_interruptible(button_wq,key_dev->pin.stat);
 			printk(KERN_INFO"COME\n...\n\n...\n.read..\n");
-			key_dev->pin[0].stat = KEY_STAT_UP;
-			scan_val =key_dev->pin[0].pin_val;
+			key_dev->pin.stat = KEY_STAT_UP;
+			scan_val =key_dev->pin.pin_val;
 		}break;
 		case 1:{
-			wait_event_interruptible(button_wq,key_dev->pin[1].stat);
-			key_dev->pin[1].stat = KEY_STAT_UP;
-			scan_val =key_dev->pin[1].pin_val;
+			wait_event_interruptible(button_wq,key_dev->pin.stat);
+			key_dev->pin.stat = KEY_STAT_UP;
+			scan_val =key_dev->pin.pin_val;
 		}break;
 		case 2:{
-			wait_event_interruptible(button_wq,key_dev->pin[2].stat);
-			key_dev->pin[2].stat = KEY_STAT_UP;
-			scan_val =key_dev->pin[2].pin_val;
+			wait_event_interruptible(button_wq,key_dev->pin.stat);
+			key_dev->pin.stat = KEY_STAT_UP;
+			scan_val =key_dev->pin.pin_val;
 		}break;
 		case 3:{
-			wait_event_interruptible(button_wq,key_dev->pin[3].stat);
-			key_dev->pin[3].stat = KEY_STAT_UP;
-			scan_val =key_dev->pin[3].pin_val;
+			wait_event_interruptible(button_wq,key_dev->pin.stat);
+			key_dev->pin.stat = KEY_STAT_UP;
+			scan_val =key_dev->pin.pin_val;
 		}break;
 		default :break;
 
@@ -167,7 +175,7 @@ unsigned int key_poll(struct file * file, struct poll_table_struct *pt)
 {
 	unsigned int mask = 0;
 	poll_wait(file,&button_wq,pt);
-	if(key_dev->pin[0].stat == KEY_STAT_DOWN)
+	if(key_dev->pin.stat == KEY_STAT_DOWN)
 		mask |= POLLIN|POLLRDNORM;
 	return mask;
 }
@@ -184,21 +192,25 @@ int key_fasync(int fd, struct file * file, int mod)
 int key_release (struct inode * Inode, struct file * file)
 {
 	int mi = MINOR(Inode->i_rdev);
+	printk(KERN_INFO"key_release:canopen = %d\n",key_dev->canopen);
 		switch(mi){
 			case 0:{
-				free_irq(IRQ_EINT0, &key_dev->pin[0]);
+				atomic_inc(&((key_dev+0)->canopen));
+				printk(KERN_INFO"key_release:canopen = %d\n",key_dev->canopen);
+				free_irq(IRQ_EINT0, &key_dev->pin);
 				key_fasync(-1, file, 0);
+
 			}break;
 			case 1:{
-				free_irq(IRQ_EINT2, &key_dev->pin[1]);
+				free_irq(IRQ_EINT2, &key_dev->pin);
 				key_fasync(-1, file, 0);
 			}break;
 			case 2:{
-				free_irq(IRQ_EINT11, &key_dev->pin[2]);
+				free_irq(IRQ_EINT11, &key_dev->pin);
 				key_fasync(-1, file, 0);
 			}break;
 			case 3:{
-				free_irq(IRQ_EINT19, &key_dev->pin[3]);
+				free_irq(IRQ_EINT19, &key_dev->pin);
 				key_fasync(-1, file, 0);
 			}break;
 			default :break;
@@ -213,6 +225,7 @@ static struct file_operations key_ops={
 	.release = key_release,
 	.poll = key_poll,
 	.fasync = key_fasync,
+
 
 };
 //we use mdev here
@@ -234,21 +247,8 @@ int key_set_up_cdev(struct key_dev_t * key_dev,int index)
 		printk(KERN_INFO"error to add_cdev!\n");
 		return err;
 	}
-	key_dev->pin[0].pin_num = S3C2410_GPF0;
-	key_dev->pin[0].pin_val = 0xf0;
-	key_dev->pin[0].stat =KEY_STAT_UP;
 
-	key_dev->pin[1].pin_num = S3C2410_GPF2;
-	key_dev->pin[1].pin_val = 0xf2;
-	key_dev->pin[1].stat =KEY_STAT_UP;
 
-	key_dev->pin[2].pin_num = S3C2410_GPG3;
-	key_dev->pin[2].pin_val = 0x73;
-	key_dev->pin[2].stat =KEY_STAT_UP;
-
-	key_dev->pin[3].pin_num = S3C2410_GPG11;
-	key_dev->pin[3].pin_val = 0x11;
-	key_dev->pin[3].stat =KEY_STAT_UP;
 	return 0;
 }
 
@@ -274,10 +274,28 @@ int __init key_init(void)
 	key_dev =kzalloc(sizeof(struct key_dev_t)*count_button, GFP_KERNEL);
 	for(dev_count = 0;dev_count<count_button;dev_count++)
 			key_set_up_cdev(&(*(key_dev+dev_count)),dev_count);
+	(key_dev+0)->pin.pin_num = S3C2410_GPF0;
+	(key_dev+0)->pin.pin_val = 0xf0;
+	(key_dev+0)->pin.stat =KEY_STAT_UP;
+
+	(key_dev+1)->pin.pin_num = S3C2410_GPF2;
+	(key_dev+1)->pin.pin_val = 0xf2;
+	(key_dev+1)->pin.stat =KEY_STAT_UP;
+
+	(key_dev+2)->pin.pin_num = S3C2410_GPG3;
+	(key_dev+2)->pin.pin_val = 0x73;
+	(key_dev+2)->pin.stat =KEY_STAT_UP;
+
+	(key_dev+3)->pin.pin_num = S3C2410_GPG11;
+	(key_dev+3)->pin.pin_val = 0x11;
+	(key_dev+3)->pin.stat =KEY_STAT_UP;
 	ioaddr_gpfcon = (volatile unsigned long * )ioremap(0x56000050,16);
 	ioaddr_gpgcon = (volatile unsigned long * )ioremap(0x56000060,16);
 	ioaddr_gpfdat = (volatile unsigned long * )ioremap(0x56000054,16);
 	ioaddr_gpgdat = (volatile unsigned long * )ioremap(0x56000064,16);
+
+
+	atomic_set(&(key_dev->canopen),1);
 	if(!key_dev){
 		ret = -ENOMEM;
 		goto fail_malloc ;
@@ -291,16 +309,17 @@ fail_malloc:
 void __exit key_exit(void)
 {
 	int i;
+	kfree(key_dev);
+	unregister_chrdev_region(dev_num, count_button);
+	for(i = 0;i<count_button;i++)
+		cdev_del(&(key_dev+i)->keydev);
+
+	class_device_destroy(chartest, dev_num);
+	class_destroy(chartest);
 	iounmap(ioaddr_gpgcon);
 	iounmap(ioaddr_gpfcon);
 	iounmap(ioaddr_gpgdat);
 	iounmap(ioaddr_gpgdat);
-	unregister_chrdev_region(dev_num, count_button);
-	for(i = 0;i<count_button;i++)
-		cdev_del(&(key_dev+i)->keydev);
-	kfree(key_dev);
-	class_device_destroy(chartest, dev_num);
-	class_destroy(chartest);
 
 
 }
