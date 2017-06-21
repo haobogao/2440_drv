@@ -12,10 +12,9 @@
 #include <linux/irq.h>
 
 
-struct resource t;
 
 
-#define NUMBEROF_CHAR_DEVICE 1
+#define NUMBEROF_CHAR_DEVICE 4
 
 
 /*
@@ -25,17 +24,13 @@ static dev_t dev_id;	//use this storge the device number.
 static int major = 0;	//if there are no paramer send in.major would be zero.
 module_param(major,int,S_IRUGO);
 
-
-struct fasync_struct
 /*
  *@brief:	 this is a  struct to describe your own
  *	char device.
  */
 struct char_dev_t {
 	struct cdev dev;
-
 };
-
 
 //the global char device pointer
 struct char_dev_t * char_dev_p;
@@ -119,30 +114,32 @@ int set_up_char_dev(struct char_dev_t * char_dev,int index)
     *@describe 		3.  set up char_dev_t structure
     *@BUG:			not found yet
 */
-int __init char_dev_init()
+int __init char_dev_init(void)
 {
 	//get default device number
 	int ret,
 	i,
-	dev_num = MKDEV(major,0);
+	dev_num = MKDEV(major,0); //we set it zero at beginning
 
 
 	//1.obtain the device number.
 	if(major)  {	//if major >= 1 it mains the major is send in by outside parameter. we using the values to made a device number as user want.
 		//obtain the device number
-		register_chrdev_region(&dev_num,NUMBEROF_CHAR_DEVICE,"char_dev name");
+		register_chrdev_region(dev_num,NUMBEROF_CHAR_DEVICE,"char_dev name");
 		major = MAJOR(dev_num);			//refresh the major value
 	}else{			//if not it must be a wrong value send in or not send at all. we dynamic allocate it.
 		//obtain the device number
-		register_chrdev_region(&dev_num,NUMBEROF_CHAR_DEVICE,"char_dev name");
+		alloc_chrdev_region(&dev_num,0,NUMBEROF_CHAR_DEVICE,"char_dev name");
 		major= MAJOR(dev_num);			//refresh the major value
 	}
+
+	dev_id = dev_num;	//here storage the major number in dev_id send back by register.
+
 	if(dev_id < 0){					//if failure return the error number
 		ret = dev_num;
 		printk(KERN_INFO"register_chrdev_region:ERROR at return values:%d\n",ret);
 		return ret;
 	}
-	dev_id = dev_num;
 
 	//2.allocate the char_dev struct's memory
 	char_dev_p = (struct char_dev_t*)kmalloc(sizeof(struct char_dev_t)* NUMBEROF_CHAR_DEVICE,GFP_KERNEL);
