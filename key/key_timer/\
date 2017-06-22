@@ -3,7 +3,7 @@
 #     Author: haobo
 KVERS =~/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/
 
-obj-m +=key_sem.o
+obj-m +=key_timer.o
 
 all:kernel_modules
 kernel_modules:

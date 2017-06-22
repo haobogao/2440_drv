@@ -45,6 +45,7 @@ struct pin_t{
 	unsigned int pin_num;
 	unsigned char pin_val;
 	unsigned char stat;
+	int irq;
 };
 
 struct key_dev_t {
@@ -62,7 +63,7 @@ void shake_handler_func(unsigned long data)
 {
 	struct key_dev_t * dev = (struct key_dev_t *) data;
 	wake_up_interruptible(&(dev->button_wq));
-	printk(KERN_INFO"weakup is Ok!\n");
+	printk(KERN_INFO"Timer: weakup is Ok!\n");
 	kill_fasync(&(dev->fasync_q), SIGIO, POLLIN);
 }
 
@@ -71,26 +72,26 @@ static irqreturn_t handler_button(int irq,void * devid)
 {
 	struct key_dev_t * p =(struct key_dev_t *)devid;
 	if(IRQ_EINT0 == irq){
-		printk(KERN_INFO"button1 clicked!\n");
+
 		p->pin.stat = KEY_STAT_DOWN;
-		mod_timer(&(p->shake_handler),jiffies+HZ/100);
+		mod_timer(&(p->shake_handler),jiffies+HZ/10);
 
 	}
 	if( IRQ_EINT2 == irq){
-			printk(KERN_INFO"button2 clicked!\n");
+
 			p->pin.stat = KEY_STAT_DOWN;
-			mod_timer(&(p->shake_handler),jiffies+HZ/100);
+			mod_timer(&(p->shake_handler),jiffies+HZ/10);
 
 	}
 	if( IRQ_EINT11 == irq){
-			printk(KERN_INFO"button3 clicked!\n");
+
 			p->pin.stat = KEY_STAT_DOWN;
-			mod_timer(&(p->shake_handler),jiffies+HZ/100);
+			mod_timer(&(p->shake_handler),jiffies+HZ/10);
 	}
 	if(IRQ_EINT19 == irq){
-			printk(KERN_INFO"button4 clicked!\n");
+
 			p->pin.stat = KEY_STAT_DOWN;
-			mod_timer(&(p->shake_handler),jiffies+HZ/100);
+			mod_timer(&(p->shake_handler),jiffies+HZ/10);
 	}
 	return IRQ_HANDLED;
 }
@@ -174,7 +175,7 @@ ssize_t key_read(struct file * File, char __user * buff, size_t size, loff_t * l
 int key_release (struct inode * Inode, struct file * file)
 {
 	struct key_dev_t * key  = ( struct key_dev_t *) file->private_data;
-	free_irq(IRQ_EINT0, &key);
+	free_irq(key->pin.irq, (void*) (key));
 	atomic_inc(&(key->available));
 	return 0;
 }
@@ -239,7 +240,7 @@ int __init key_set_up_cdev(struct key_dev_t * key_dev,int index)
 	init_timer(&(key_dev->shake_handler));
 	key_dev->shake_handler.function = shake_handler_func;
 	key_dev->shake_handler.data =(unsigned long) key_dev;
-	key_dev->shake_handler.expires = jiffies - HZ/100; //set a passed value to off
+	key_dev->shake_handler.expires = 0; //set a passed value to off
 	add_timer(&(key_dev->shake_handler));
 	atomic_set(&(key_dev->available),1);  //set every atomic be 1;
 	return 0;
@@ -255,18 +256,22 @@ void set_key_gpio(void)
 	key_dev[0].pin.pin_num = S3C2410_GPF0;
 	key_dev[0].pin.pin_val = 0xf0;
 	key_dev[0].pin.stat =KEY_STAT_UP;
+	key_dev[0].pin.irq = IRQ_EINT0;
 
 	key_dev[1].pin.pin_num = S3C2410_GPF2;
 	key_dev[1].pin.pin_val = 0xf2;
 	key_dev[1].pin.stat =KEY_STAT_UP;
+	key_dev[1].pin.irq = IRQ_EINT2;
 
 	key_dev[2].pin.pin_num = S3C2410_GPG3;
 	key_dev[2].pin.pin_val = 0x73;
 	key_dev[2].pin.stat =KEY_STAT_UP;
+	key_dev[2].pin.irq = IRQ_EINT11;
 
 	key_dev[3].pin.pin_num = S3C2410_GPG11;
 	key_dev[3].pin.pin_val = 0x11;
 	key_dev[3].pin.stat =KEY_STAT_UP;
+	key_dev[3].pin.irq = IRQ_EINT19;
 }
 
 
@@ -307,17 +312,25 @@ fail_malloc:
 void __exit key_exit(void)
 {
 	int i;
-	iounmap(ioaddr_gpgcon);
-	iounmap(ioaddr_gpfcon);
-	iounmap(ioaddr_gpgdat);
-	iounmap(ioaddr_gpgdat);
+	printk(KERN_INFO"exit start\n");
+	if(ioaddr_gpgcon)
+		iounmap(ioaddr_gpgcon);
+	if(ioaddr_gpfcon)
+		iounmap(ioaddr_gpfcon);
+	if(ioaddr_gpgdat)
+		iounmap(ioaddr_gpgdat);
+	if(ioaddr_gpgdat)
+		iounmap(ioaddr_gpgdat);
+	printk(KERN_INFO"unmap\n");
 
 	unregister_chrdev_region(dev_num, count_button);
 	for(i = 0;i<count_button;i++){
 		cdev_del(&(key_dev+i)->keydev);
 		del_timer(&(key_dev+i)->shake_handler);
 	}
+	printk(KERN_INFO"ready kfree\n");
 	kfree(key_dev);
+	printk(KERN_INFO"ready kfree OK\n");
 	class_device_destroy(chartest, dev_num);
 	class_destroy(chartest);
 
