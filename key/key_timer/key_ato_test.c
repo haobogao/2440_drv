@@ -15,10 +15,10 @@ int main(void)
 {
 	int fd[4],i;
 
-	fd[0] = open("/dev/key0");
-	fd[1] = open("/dev/key1");
-	fd[2] = open("/dev/key2");
-	fd[3] = open("/dev/key3");
+	fd[0] = open("/dev/key0",O_RDWR);
+	fd[1] = open("/dev/key1",O_RDWR);
+	fd[2] = open("/dev/key2",O_RDWR);
+	fd[3] = open("/dev/key3",O_RDWR);
 
 	for (i = 0;i<4;i++){
 		if(fd[i]<0){
