@@ -32,7 +32,6 @@ volatile unsigned long * ioaddr_gpfdat = NULL;
 volatile unsigned long * ioaddr_gpgdat = NULL;
 
 
-#define DEBUG
 
 static int count_button = 4;
 
@@ -50,6 +49,7 @@ struct key_input_dev_t {
 	struct pin_t pin[4];
 	struct timer_list shake_handler;
 	int current_key;
+	char input_name[20];
 };
 static struct key_input_dev_t * key_input_dev;
 
@@ -58,10 +58,18 @@ static struct key_input_dev_t * key_input_dev;
 void shake_handler_func(unsigned long data)
 {
 	struct key_input_dev_t * dev = (struct key_input_dev_t *) data;
-	printk(KERN_INFO"Timer: weakup is Ok!\n");
-	input_event(dev->input_key,EV_KEY, dev->pin[dev->current_key].pin_val, 1);
-	input_sync(dev->input_key);
+	int pinval;
 
+	pinval =  s3c2410_gpio_getpin(dev->pin[dev->current_key].pin_num);
+//	printk(KERN_INFO"Timer: weakup is Ok!\n");
+	if(pinval){
+		input_event(dev->input_key,EV_KEY, dev->pin[dev->current_key].pin_val, 0);
+		input_sync(dev->input_key);
+
+	}else{
+		input_event(dev->input_key,EV_KEY, dev->pin[dev->current_key].pin_val, 1);
+		input_sync(dev->input_key);
+	}
 }
 
 
@@ -70,19 +78,19 @@ static irqreturn_t handler_button(int irq,void * devid)
 	struct key_input_dev_t * p =(struct key_input_dev_t *)devid;
 
 	if(IRQ_EINT0 == irq){
-		mod_timer(&(p->shake_handler),jiffies+HZ/10);
+		mod_timer(&(p->shake_handler),jiffies+HZ/100);
 		p->current_key = 0;
 	}
 	if( IRQ_EINT2 == irq){
-		mod_timer(&(p->shake_handler),jiffies+HZ/10);
+		mod_timer(&(p->shake_handler),jiffies+HZ/100);
 		p->current_key = 1;
 	}
 	if( IRQ_EINT11 == irq){
-		mod_timer(&(p->shake_handler),jiffies+HZ/10);
+		mod_timer(&(p->shake_handler),jiffies+HZ/100);
 		p->current_key = 2;
 	}
 	if(IRQ_EINT19 == irq){
-		mod_timer(&(p->shake_handler),jiffies+HZ/10);
+		mod_timer(&(p->shake_handler),jiffies+HZ/100);
 		p->current_key = 3;
 	}
 	return IRQ_HANDLED;
@@ -97,6 +105,8 @@ void set_inputkey_gpio(void)
 	ioaddr_gpgcon = (volatile unsigned long * )ioremap(0x56000060,16);
 	ioaddr_gpfdat = (volatile unsigned long * )ioremap(0x56000054,16);
 	ioaddr_gpgdat = (volatile unsigned long * )ioremap(0x56000064,16);
+
+	strcpy( key_input_dev->input_name,"key_input");
 
 	key_input_dev->pin[0].pin_num = S3C2410_GPF0;
 	key_input_dev->pin[0].pin_val = KEY_L;
@@ -129,8 +139,7 @@ int __init key_input_init(void)
 	key_input_dev =kzalloc(sizeof(struct key_input_dev_t)*count_button, GFP_KERNEL);
 	 key_input_dev->input_key = input_allocate_device();
 	 set_inputkey_gpio();
-
-
+	 key_input_dev->input_key->name = key_input_dev->input_name ;
 	 //set this structure
 	 set_bit(EV_KEY, key_input_dev->input_key->evbit);
 	 set_bit(EV_REP,key_input_dev->input_key->evbit);
@@ -142,12 +151,11 @@ int __init key_input_init(void)
 	/*register */
 	input_register_device(key_input_dev->input_key);
 	for(i = 0;i <count_button;i++)
-		ret =request_irq(key_input_dev->pin[i].irq, handler_button, IRQT_FALLING,key_input_dev->pin[i].name,(key_input_dev));
+		ret =request_irq(key_input_dev->pin[i].irq, handler_button, IRQT_BOTHEDGE,key_input_dev->pin[i].name,(key_input_dev));
 
 	init_timer(&(key_input_dev->shake_handler));
 	key_input_dev->shake_handler.function = shake_handler_func;
 	key_input_dev->shake_handler.data =(unsigned long) key_input_dev;
-	key_input_dev->shake_handler.expires = 0; //set a passed value to off
 	add_timer(&(key_input_dev->shake_handler));
 	return 0;
 }

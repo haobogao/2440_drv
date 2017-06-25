@@ -1,8 +1,8 @@
 #Makefile
 # Created on: May 11, 2017
 #     Author: haobo
-#KVERS =~/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/
-KVERS = ~/linux_2.26_eclipse_project/
+KVERS =~/Desktop/current_work_dir/linux_kernel_src/2440_board_kernel/
+#KVERS = ~/linux_2.26_eclipse_project/
 obj-m +=key_timer_drv.o
 
 all:kernel_modules
