@@ -12,7 +12,7 @@
 #include <fcntl.h>
 int main(int argc,char * argv[])
 {
-	int fd = open("/dev/led1",O_RDWR);
+	int fd = open("/dev/led2",O_RDWR);
 	if(!fd){
 		printf("error£º¡¡open");
 	}

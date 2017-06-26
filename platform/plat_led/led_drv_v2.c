@@ -161,7 +161,7 @@ int led_remove(struct platform_device * dev)
 int led_probe(struct platform_device * dev)
 {
 
-	char i;
+	struct resource * res = platform_get_resource(dev,IORESOURCE_MEM,0);
 	led = (struct led_data_t *)dev->dev.platform_data;
 
 #ifdef DEBUG_PRINT
@@ -172,10 +172,12 @@ int led_probe(struct platform_device * dev)
 	//get and remap IO address
 
 
-		led->vm_con = (unsigned int * )ioremap((led->reg_con),8);
+		led->vm_con = (unsigned int * )ioremap((res->start),res->end-res->start +1 );
+		printk(KERN_NOTICE" DEBUG:res->start =  %x\n",res->start);
 		led->vm_dat = led->vm_con+1;
 
-//	struct resource * res = platform_get_resource(dev,IORESOURCE_MEM,0);
+
+
 //	res = platform_get_resource(dev,IORESOURCE_IRQ,0);
 
 	//register char device
