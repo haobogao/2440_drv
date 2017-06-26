@@ -13,14 +13,19 @@
 #include <asm/irq.h>
 #include <linux/string.h>
 #include <linux/moduleparam.h>
-#include <asm/drvtest/led.h>
+#include "led.h"
+#include <linux/module.h>
+#include <linux/version.h>
+#include <linux/platform_device.h>
+
+
 
 #define DEBUG_PRINT
 
 struct led_data_t * led;
 
-static struct class * chartest_class;
-static struct class_device * led_class_device;
+ struct class * chartest_class;
+ struct class_device * led_class_device;
 
 #define LED_ON(x) 		*(led->vm_dat) &= ~(1<<x);
 #define LED_OFF(x) 		*(led->vm_dat) |= (1<<x);
@@ -36,7 +41,7 @@ int led_open(struct inode * Inode,struct file * File)
 
 	*(led->vm_con) &= ~( (0x3) << (led->led[minor].pin) * 2 );
 	*(led->vm_con) |= ( (0x1) << (led->led[minor].pin) * 2 );
-	File->private_data = (struct led_t *) led->led[minor];
+	File->private_data = (void *) &led->led[minor];
 	return 0;
 }
 
@@ -65,7 +70,7 @@ ssize_t led_write(struct file * File, const char __user * buff, size_t size, lof
 	return 0;
 }
 
-int led_release (struct inode *, struct file *)
+int led_release (struct inode * inode, struct file * file)
 {
 	return 0;
 }
@@ -85,22 +90,22 @@ struct file_operations led_ops = {
 void led_setup_cdev(struct led_data_t * led,int index)
 {
 		int err;
-		char minor_str[2],devname[4] = "led";
+
 		led->led[index].dev_num = MKDEV(led->major,led->led[index].minor+index);
 
 		led_class_device = class_device_create(chartest_class, NULL,led->led[index].dev_num, NULL,"led%d",index);
 		led->led[index].led_dev.owner = THIS_MODULE;
 	// cdev_init used for init the cdev and build the relationship between the file_operation and cdev.
-		cdev_init(led->led[index].led_dev,&led_ops);
+		cdev_init(&led->led[index].led_dev,&led_ops);
 		//add a  char device in the system
-		err =  cdev_add(led->led[index].led_dev, led->led[index].dev_num, 1);
+		err =  cdev_add(&led->led[index].led_dev, led->led[index].dev_num, 1);
 		if(err)
 			printk(KERN_INFO"cdev_add: error\n");
 }
 
 void led_register(struct led_data_t * dev)
 {
-	int ret,i;
+	int i;
 
 	if(!alloc_chrdev_region(&(dev->led[0].dev_num), 0, NUMOFLED, "led")){
 		printk(KERN_NOTICE"alloc_chrdev_region: NOMEM");
@@ -131,9 +136,9 @@ int led_remove(struct platform_device * dev)
 	int i;
 	iounmap(led->vm_con);
 	for(i = 0;i<NUMOFLED;i++)
-		cdev_del(led->led[i].led_dev);
+		cdev_del(&led->led[i].led_dev);
 	unregister_chrdev_region(led->led[0].dev_num,NUMOFLED);
-    class_device_destroy(led_class_device,led->led[0].dev_num);
+    class_device_destroy(chartest_class,led->led[0].dev_num);
 	class_destroy(chartest_class);
 	return 0 ;
 }
@@ -164,7 +169,7 @@ int led_probe(struct platform_device * dev)
 	//get and remap IO address
 
 	for (i = 0;i< NUMOFLED;i++){
-		led->vm_con = (volatile unsigned long * )ioremap(led->reg_con,8);
+		led->vm_con = (unsigned int * )ioremap(*(led->reg_con),8);
 		led->vm_dat = led->vm_con+1;
 	}
 
@@ -186,15 +191,15 @@ struct platform_driver led_drv = {
 		.driver = {
 				.name = "led",
 		},
-}
+};
 
-static void led_drv_exit(void)
+static void __exit led_drv_exit(void)
 {
 	platform_driver_unregister(&led_drv);
 
 }
 
-static int led_drv_init(void)
+static int __init led_drv_init(void)
 {
 	platform_driver_register(&led_drv);
 	return 0;
@@ -208,3 +213,5 @@ MODULE_DESCRIPTION("The first led driver in board!");
 
 module_init(led_drv_init);
 module_exit(led_drv_exit);
+
+
