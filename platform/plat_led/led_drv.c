@@ -210,8 +210,8 @@ static int __init led_drv_init(void)
 
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("haobo.gao@qq.com");
-MODULE_VERSION("LED Ver0.1");
-MODULE_DESCRIPTION("The first led driver in board!");
+MODULE_VERSION("LED Ver0.2");
+MODULE_DESCRIPTION(" led driver reform 4 platform!");
 
 module_init(led_drv_init);
 module_exit(led_drv_exit);
