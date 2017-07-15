@@ -21,6 +21,7 @@
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/fb.h>
 
+/* 480*272*3 */
 
 static struct fb_ops fb_ops42440 = {
 	.owner		= THIS_MODULE,
@@ -40,13 +41,13 @@ static int __init lcd_init(void)
 
 	/* 2. set the fucking parameters */
 	strcpy(fd_info42440->fix.id, "2440lcd");
-	fd_info42440->fix.smem_len = 240*320*16/8;
+	fd_info42440->fix.smem_len = 272*480*16/8;
 	fd_info42440->fix.type     = FB_TYPE_PACKED_PIXELS;
 	fd_info42440->fix.visual   = FB_VISUAL_TRUECOLOR; /* TFT */
 	fd_info42440->fix.line_length = 240*2;
 
-	fd_info42440->var.xres           = 240;
-	fd_info42440->var.yres           = 320;
+	fd_info42440->var.xres           = 272;
+	fd_info42440->var.yres           = 480;
 	fd_info42440->var.xres_virtual   = 240;
 	fd_info42440->var.yres_virtual   = 320;
 	fd_info42440->var.bits_per_pixel = 16;
@@ -64,22 +65,6 @@ static int __init lcd_init(void)
 	fd_info42440->var.activate       = FB_ACTIVATE_NOW;
 
 
-	/* 2.3 设置操作函数 */
-	fd_info42440->fbops              = &fb_ops42440;
-
-	/* 2.4 其他的设置 */
-	//fd_info42440->pseudo_palette =; //
-	//fd_info42440->screen_base  = ;  /* 显存的虚拟地址 */
-	fd_info42440->screen_size   = 240*324*16/8;
-
-	/* 3. 硬件相关的操作 */
-	/* 3.1 配置GPIO用于LCD */
-	/* 3.2 根据LCD手册设置LCD控制器, 比如VCLK的频率等 */
-	/* 3.3 分配显存(framebuffer), 并把地址告诉LCD控制器 */
-	//fd_info42440->fix.smem_start = xxx;  /* 显存的物理地址 */
-
-	/* 4. 注册 */
-	register_framebuffer(fd_info42440);
 
 	return 0;
 }
