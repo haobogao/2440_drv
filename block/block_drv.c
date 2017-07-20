@@ -1,7 +1,7 @@
 /*										A simple block device driver test
  * 			write at the meanwhile read the LDD3, test used code;
  * 																					by haobo.gao
- * 																					2017年07月20日09:42:46 @ZHENGZHOU(郑州)
+ * 																					2017年7月20日21:20:56
  *
  */
 #include <linux/blkdev.h>
@@ -16,7 +16,7 @@
 #include <linux/genhd.h>
 #include <linux/bio.h>
 
-
+#define CUR_INVALID_DELAY   30*HZ 		//clean the disk after how many second you close the device.
 #define CUR_NR_DISK 4				//we assumed that there are four disk under this driver's control
 
 #define CUR_SECTOR_SIZE	 512		//the sector size
@@ -24,7 +24,7 @@
 #define CUR_NR_SECTOR	 1024		//how many sector are there
 
 #define CUR_DISK_MINORS		16
-// defined to make it easy to useing the related data structure in this driver;
+// defined to make it easy to using the related data structure in this driver;
 struct test_blk_t{
 	unsigned char 			*data;
 	unsigned int 			major;
@@ -35,16 +35,50 @@ struct test_blk_t{
 	short 					flag_media_changed;
 	spinlock_t               spinlock;
 	int 					 size;
+	unsigned int			user_count;	//user used count,when it decreased to zero.this device will be freed
 };
 
-struct test_blk_t * test_blk;
+static struct test_blk_t * test_blk;
+
+static int test_blk_open (struct inode * inode, struct file * file)
+{
+	struct test_blk_t * dev = inode->i_bdev->bd_disk->private_data;
+	/*
+	 	 *@ when open this device kill the timer,
+	 	 *@ add a timer while close this device.
+	 	 *@ Doing this way is for make it like a remove able block device that when you close this
+	 	 *@ more than 30 second,it will be assumed to be removed.
+	 */
+	del_timer_sync( &( dev->timer ) );
+	file->private_data = dev;
+	spin_lock( &(dev->spinlock) );
+	if(!dev->user_count)
+		check_disk_change(inode->i_bdev);
+	dev->user_count++;
+	spin_unlock( &(dev->spinlock) );
 
 
+	return 0;
+}
 
+static int test_blk_release(struct inode *inode, struct file * file)
+{
+	struct test_blk_t * dev = inode->i_bdev->bd_disk->private_data;
+
+	spin_lock( &(dev->spinlock) );
+	dev->user_count--;
+	if(dev->user_count == 0){
+		dev->timer.expires =jiffies + CUR_INVALID_DELAY;
+		add_timer( &(dev->timer) );
+	}
+	spin_unlock( &(dev->spinlock) );
+
+	return 0;
+}
 
 struct block_device_operations blk_dev_ops = {
-
-
+		.open = test_blk_open,
+		.release = test_blk_release,
 };
 
 
