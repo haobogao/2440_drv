@@ -20,6 +20,7 @@
 #include <asm/arch/regs-lcd.h>
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/fb.h>
+#include <linux/fs.h>
 
 /* 480*272*3 */
 
@@ -29,6 +30,8 @@
 #define LCD_LINEVAL		(272-1)<<14
 #define LCD_VFPD		2<<6
 #define LCD_VSPW		10
+
+
 /*board regs*/
 static struct s3c2440_lcd_regs{
 	/*lcdcon1  */
@@ -73,31 +76,12 @@ static int __init lcd_init(void)
 	lcd.fd_info42440 = framebuffer_alloc(0, NULL);
 
 	/* 2. set the fucking parameters */
-<<<<<<< HEAD
+
 	strcpy(lcd.fd_info42440->fix.id, "2440lcd");
 	lcd.fd_info42440->fix.smem_len = 272*480*16/8;
 	lcd.fd_info42440->fix.type     = FB_TYPE_PACKED_PIXELS;
 	lcd.fd_info42440->fix.visual   = FB_VISUAL_TRUECOLOR;
-=======
-	strcpy(fd_info42440->fix.id, "2440lcd");
-	fd_info42440->fix.smem_len = 272*480*16/8;
-	fd_info42440->fix.type     = FB_TYPE_PACKED_PIXELS;
-	fd_info42440->fix.visual   = FB_VISUAL_TRUECOLOR; /* TFT */
-	fd_info42440->fix.line_length = 240*2;
 
-	fd_info42440->var.xres           = 272;
-	fd_info42440->var.yres           = 480;
-	fd_info42440->var.xres_virtual   = 240;
-	fd_info42440->var.yres_virtual   = 320;
-	fd_info42440->var.bits_per_pixel = 16;
-
-	/* RGB:565 */
-	fd_info42440->var.red.offset     = 11;
-	fd_info42440->var.red.length     = 5;
-
-	fd_info42440->var.green.offset   = 5;
-	fd_info42440->var.green.length   = 6;
->>>>>>> a345a0d7c3b78a9708f3807f57d16a0894314f58
 
 	lcd.fd_info42440->var.xres           = 480;
 	lcd.fd_info42440->var.yres           = 272;
@@ -109,7 +93,6 @@ static int __init lcd_init(void)
 	lcd.fd_info42440->var.red.offset     = 11;
 	lcd.fd_info42440->var.red.length     = 5;
 
-<<<<<<< HEAD
 	lcd.fd_info42440->var.green.offset   = 5;
 	lcd.fd_info42440->var.green.length   = 6;
 
@@ -121,15 +104,19 @@ static int __init lcd_init(void)
 
 	/*set HW reg*/
 	lcd.lcd_regs.LCDCON1 =4<<8|0x03<<5|0x0c<<1;
-	lcd.lcd_regs.LCDCON2 = VBPD;
-=======
->>>>>>> a345a0d7c3b78a9708f3807f57d16a0894314f58
+	lcd.lcd_regs.LCDCON2 = LCD_LINEVAL|LCD_VBPD|LCD_VFPD|LCD_VSPW;
+	lcd.lcd_regs.LCDCON3 = 2<<19|479<<8|2;
+	lcd.lcd_regs.LCDCON4 = 41;
+	lcd.lcd_regs.LCDCON5 = 1<<11;
+
+
 
 	return 0;
 }
 
 static void __exit lcd_exit(void)
 {
+	register_blkdev();
 }
 
 module_init(lcd_init);
