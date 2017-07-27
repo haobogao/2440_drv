@@ -31,6 +31,16 @@
 #define LCD_VFPD		2<<6
 #define LCD_VSPW		10
 
+struct lcd_port_t{
+	unsigned int vm_gpccon;
+	unsigned int phy_gpccon;
+
+	unsigned int vm_gpdcon;
+	unsigned int phy_gpdcon;
+
+
+
+};
 
 /*board regs*/
 static struct s3c2440_lcd_regs{
@@ -58,6 +68,7 @@ static struct s3c2440_lcd_regs{
 
 
 static struct s3c2440_lcd_struct {
+	 struct  lcd_port_t * lcd_port;
 	 struct fb_info *fd_info42440;
 	 struct s3c2440_lcd_regs lcd_regs;
 	 struct fb_ops fb_ops42440 = {
@@ -76,13 +87,13 @@ static int __init lcd_init(void)
 	lcd.fd_info42440 = framebuffer_alloc(0, NULL);
 
 	/* 2. set the fucking parameters */
-
+		/*set  fix*/
 	strcpy(lcd.fd_info42440->fix.id, "2440lcd");
 	lcd.fd_info42440->fix.smem_len = 272*480*16/8;
 	lcd.fd_info42440->fix.type     = FB_TYPE_PACKED_PIXELS;
 	lcd.fd_info42440->fix.visual   = FB_VISUAL_TRUECOLOR;
 
-
+	/*set var	*/
 	lcd.fd_info42440->var.xres           = 480;
 	lcd.fd_info42440->var.yres           = 272;
 	lcd.fd_info42440->var.xres_virtual   = 480;
@@ -101,6 +112,28 @@ static int __init lcd_init(void)
 
 	lcd.fd_info42440->var.activate       = FB_ACTIVATE_NOW;
 	lcd.fd_info42440->var;
+
+	/*
+	 	* set gpio
+	 		*
+	 		* gpb0 ---> LCD background led
+	 		*
+	 		* VD[0:23] -- GPD[0-15] GPC[8-15]
+	 		*
+	 		* GPG4 ------LCD_PWREN
+	 		* LEND  -----GPC0
+	 		* VCLK	-----GPC1
+	 		* VLINE -----GPC2
+	 		* VFRAME --- GPC3
+	 		* VM/VDEN ---- GPC4
+	 		* LCD_LPCOE----GPC5
+	 		* LCD_LPCREV -----GPC6
+	 		* LCD_LPCREVB -----GPC7
+
+	*/
+
+	//
+	lcd.lcd_port
 
 	/*set HW reg*/
 	lcd.lcd_regs.LCDCON1 =4<<8|0x03<<5|0x0c<<1;

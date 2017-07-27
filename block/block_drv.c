@@ -15,6 +15,7 @@
 #include <linux/vmalloc.h>
 #include <linux/genhd.h>
 #include <linux/bio.h>
+#include <linux/hdreg.h>
 
 #define CUR_INVALID_DELAY   30*HZ 		//clean the disk after how many second you close the device.
 #define CUR_NR_DISK 4				//we assumed that there are four disk under this driver's control
@@ -51,11 +52,11 @@ static int test_blk_open (struct inode * inode, struct file * file)
 	 */
 	del_timer_sync( &( dev->timer ) );
 	file->private_data = dev;
-	spin_lock( &(dev->spinlock) );
+  spin_lock( &(dev->spinlock) );
 	if(!dev->user_count)
 		check_disk_change(inode->i_bdev);
 	dev->user_count++;
-	spin_unlock( &(dev->spinlock) );
+  spin_unlock( &(dev->spinlock) );
 
 
 	return 0;
@@ -65,35 +66,90 @@ static int test_blk_release(struct inode *inode, struct file * file)
 {
 	struct test_blk_t * dev = inode->i_bdev->bd_disk->private_data;
 
-	spin_lock( &(dev->spinlock) );
+  spin_lock( &(dev->spinlock) );
 	dev->user_count--;
 	if(dev->user_count == 0){
 		dev->timer.expires =jiffies + CUR_INVALID_DELAY;
 		add_timer( &(dev->timer) );
 	}
-	spin_unlock( &(dev->spinlock) );
+  spin_unlock( &(dev->spinlock) );
 
 	return 0;
 }
 
+int test_blk_media_changed (struct gendisk * disk)
+{
+	struct test_blk_t dev = disk->private_data;
+
+	return  dev->flag_media_changed;
+}
+
+/*
+ 	 *@ make the device revalidate
+ 	 *@
+ */
+void test_blk_revalidate(struct gendisk * disk )
+{
+	struct test_blk_t dev = disk->private_data;
+	if(dev->flag_media_changed){
+		dev->flag_media_changed = 0;
+		memset(dev->data,0,dev->size);
+	}
+	return 0;
+}
+int test_blk_ioctl (struct inode * inode, struct file * file , unsigned cmd, unsigned long arg)
+{
+	struct test_blk_t dev = inode ->i_bdev->bd_disk->private_data;
+	struct  hd_geometry geo;
+	long size;
+	switch(cmd){
+
+		case HDIO_GETGEO:{
+				size = dev->size * (CUR_SECTOR_SIZE/512);
+				geo.cylinders = size>>6;
+				geo.heads = 4;
+				geo.sectors = 16;
+				geo.start = 4;
+				if( copy_to_user( (void __user *) arg,&geo,sizeof(geo) ) )
+					return -1;
+				return 0;
+		}break;
+
+
+	}
+
+	return 0;
+}
 struct block_device_operations blk_dev_ops = {
 		.open = test_blk_open,
 		.release = test_blk_release,
+		.media_changed = test_blk_media_changed,
+		.revalidate_disk = test_blk_revalidate,
+		.ioctl = test_blk_ioctl,
 };
 
 
 /*
- 	 *@this function was binded at request queue
+ 	 *@ This function was binded with request queue
+ 	 *
  */
 void test_blk_request(request_queue_t q)
 {
-	;
+
 }
 /*
  	 *@ timer count come function
+ 	 *@ handle the job about invalible disk
  */
 void timer_function(unsigned long par)
 {
+	struct test_blk_t dev = (struct test_blk_t *) par;
+	spin_lock( &(dev->spinlock) );
+	if(dev->user_count || !dev->data)
+		printk(KERN_WARNING"test_blk: timer check failed ! some thing going wrong!\n");
+	else
+		dev->flag_media_changed
+	spin_unlock( &(dev->spinlock) );
 
 }
 
