@@ -21,6 +21,11 @@
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/fb.h>
 #include <linux/fs.h>
+#include <linux/io.h>
+
+
+
+
 
 /* 480*272*3 */
 
@@ -31,14 +36,46 @@
 #define LCD_VFPD		2<<6
 #define LCD_VSPW		10
 
+struct reg_addr_t{
+	/* prefix "phy" means physical register address while the "vm" means virtual address
+	 *  which indicate physical address after kernel mmap  */
+	unsigned int vir;
+	unsigned int phy;
+};
+
+
+
+/*
+ 	* set gpio
+ 		*
+ 		* gpb0 ---> LCD background led
+ 		*
+ 		* VD[0:23] -- GPD[0-15] GPC[8-15]
+ 		*
+ 		* GPG4 ------LCD_PWREN
+ 		* LEND  -----GPC0
+ 		* VCLK	-----GPC1
+ 		* VLINE -----GPC2
+ 		* VFRAME --- GPC3
+ 		* VM/VDEN ---- GPC4
+ 		* LCD_LPCOE----GPC5
+ 		* LCD_LPCREV -----GPC6
+ 		* LCD_LPCREVB -----GPC7
+
+*/
 struct lcd_port_t{
-	unsigned int vm_gpccon;
-	unsigned int phy_gpccon;
 
-	unsigned int vm_gpdcon;
-	unsigned int phy_gpdcon;
+	struct reg_addr_t gpc_con;
 
+	struct reg_addr_t gpc_dat;
 
+	struct reg_addr_t gpd_con;
+
+	struct reg_addr_t gpd_dat;
+
+	struct reg_addr_t gpb_con;
+
+	struct reg_addr_t gpb_dat;
 
 };
 
@@ -80,6 +117,13 @@ static struct s3c2440_lcd_struct {
 	 };
 };
 
+
+
+#define ON 	1
+#define OFF 0
+
+#define BACK_GROUND_LED(x)
+
 static struct s3c2440_lcd_struct lcd;
 static int __init lcd_init(void)
 {
@@ -111,7 +155,7 @@ static int __init lcd_init(void)
 	lcd.fd_info42440->var.blue.length    = 5;
 
 	lcd.fd_info42440->var.activate       = FB_ACTIVATE_NOW;
-	lcd.fd_info42440->var;
+//	lcd.fd_info42440->var.;
 
 	/*
 	 	* set gpio
@@ -132,8 +176,9 @@ static int __init lcd_init(void)
 
 	*/
 
-	//
-	lcd.lcd_port
+	//set background led
+	lcd.lcd_port->gpb_con.vir = ioremap(lcd.lcd_port->gpb_con.phy,16);
+
 
 	/*set HW reg*/
 	lcd.lcd_regs.LCDCON1 =4<<8|0x03<<5|0x0c<<1;
