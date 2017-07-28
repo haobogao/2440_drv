@@ -240,8 +240,10 @@ static int __init lcd_init(void)
 
 	/*allocate the frame buff*/
 	lcd.fd_info42440->screen_base = dma_alloc_writecombine(NULL, lcd.fd_info42440->fix.smem_len , lcd.fd_info42440->fix.smem_start , GFP_KERNEL);
-	//lcd.lcd_regs.LCDSADDR1 =  ((lcd.fd_info42440->fix.smem_start>>22)<<21) |
-	//
+	lcd.lcd_regs.LCDSADDR1 = ( lcd.fd_info42440->fix.smem_start >>1 )  & ~(0x03<<30);
+//	LCDBASEL = LCDBASEU + (PAGEWIDTH + OFFSIZE) ¡Á (LINEVAL + 1)
+	lcd.lcd_regs.LCDSADDR2 = ( ( (lcd.fd_info42440->fix.smem_start + lcd.fd_info42440->fix.smem_len ) >> 1 + 1 )  & 0x1fffff );
+	lcd.lcd_regs.LCDSADDR3 = 272*16/16;
 	lcd_switch(ON);
 	lcd_background_led_switch(ON);	//open the lcd light
 	register_framebuffer(lcd.fd_info42440);
