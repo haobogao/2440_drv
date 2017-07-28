@@ -66,16 +66,16 @@ struct reg_addr_t{
 struct lcd_port_t{
 
 	struct reg_addr_t gpc_con;
-
 	struct reg_addr_t gpc_dat;
 
 	struct reg_addr_t gpd_con;
-
 	struct reg_addr_t gpd_dat;
 
 	struct reg_addr_t gpb_con;
-
 	struct reg_addr_t gpb_dat;
+
+	struct reg_addr_t gpg_con;
+	struct reg_addr_t gpg_dat;
 
 };
 
@@ -122,9 +122,32 @@ static struct s3c2440_lcd_struct {
 #define ON 	1
 #define OFF 0
 
-#define BACK_GROUND_LED(x)
 
 static struct s3c2440_lcd_struct lcd;
+
+static inline void lcd_background_led_switch(char stat)
+{
+	if(stat == ON){
+		lcd.lcd_port->gpb_dat.vir |= (0x01 << 0);
+	}else if(stat == OFF){
+		lcd.lcd_port->gpb_dat.vir &= ~(0x01 << 0);
+	}else
+		printk(KERN_NOTICE"@ lcd_drv.c:lcd_background_led_switch dummy parameter!");
+}
+
+static inline void lcd_switch(char stat)
+{
+	if(stat == ON){
+		lcd.lcd_regs.LCDCON1 |= (0x01 << 0);
+		lcd.lcd_regs.LCDCON5 |= (0x01<<3);
+	}else if(stat == OFF){
+		lcd.lcd_regs.LCDCON1 &= ~(0x01 << 0);
+		lcd.lcd_regs.LCDCON5 &= ~(0x01<<3);
+	}else
+		printk(KERN_NOTICE"@ lcd_drv.c:lcd_switch dummy parameter!");
+}
+
+
 static int __init lcd_init(void)
 {
 	/* 1. allocate a  fb_info structure */
@@ -155,7 +178,7 @@ static int __init lcd_init(void)
 	lcd.fd_info42440->var.blue.length    = 5;
 
 	lcd.fd_info42440->var.activate       = FB_ACTIVATE_NOW;
-//	lcd.fd_info42440->var.;
+
 
 	/*
 	 	* set gpio
@@ -176,9 +199,37 @@ static int __init lcd_init(void)
 
 	*/
 
-	//set background led
-	lcd.lcd_port->gpb_con.vir = ioremap(lcd.lcd_port->gpb_con.phy,16);
 
+
+		//set port physical address
+	lcd.lcd_port->gpb_con.phy =0x56000010;
+	lcd.lcd_port->gpb_dat.phy =0x56000014;
+	lcd.lcd_port->gpc_con.phy =0x56000020;
+	lcd.lcd_port->gpc_dat.phy =0x56000024;
+	lcd.lcd_port->gpd_con.phy =0x56000030;
+	lcd.lcd_port->gpd_dat.phy =0x56000034;
+	lcd.lcd_port->gpg_con.phy = 0x56000060;
+	lcd.lcd_port->gpg_dat.phy = 0x56000064;
+
+		//mmap all regs
+	lcd.lcd_port->gpb_con.vir = ioremap(lcd.lcd_port->gpb_con.phy,16);
+	lcd.lcd_port->gpb_dat.vir = ioremap(lcd.lcd_port->gpb_dat.phy,16);
+	lcd.lcd_port->gpc_con.vir = ioremap(lcd.lcd_port->gpc_con.phy,16);
+	lcd.lcd_port->gpc_dat.vir = ioremap(lcd.lcd_port->gpc_dat.phy,16);
+	lcd.lcd_port->gpd_con.vir = ioremap(lcd.lcd_port->gpd_con.phy,16);
+	lcd.lcd_port->gpd_dat.vir = ioremap(lcd.lcd_port->gpd_dat.phy,16);
+	lcd.lcd_port->gpg_con.vir = ioremap(lcd.lcd_port->gpg_con.phy,16);
+	lcd.lcd_port->gpg_dat.vir = ioremap(lcd.lcd_port->gpg_dat.phy,16);
+	lcd.lcd_regs = ioremap(lcd.lcd_regs,sizeof(struct s3c2440_lcd_regs));
+
+	//set background led
+	//configure gpb  to output mode
+	lcd.lcd_port->gpb_con.vir &= ~(3<<0);			//lowest two bit set to zero
+	lcd.lcd_port->gpb_con.vir |= 0x03;
+
+	//set gpg4 to LCD_POWEN .output value of LCD_PWREN pin is controlled by ENVID
+	lcd.lcd_port->gpg_con.vir &= ~(3<< (2*4) );
+	lcd.lcd_port->gpg_con.vir |=	3<<(2*4);
 
 	/*set HW reg*/
 	lcd.lcd_regs.LCDCON1 =4<<8|0x03<<5|0x0c<<1;
@@ -187,14 +238,32 @@ static int __init lcd_init(void)
 	lcd.lcd_regs.LCDCON4 = 41;
 	lcd.lcd_regs.LCDCON5 = 1<<11;
 
-
-
+	/*allocate the frame buff*/
+	lcd.fd_info42440->screen_base = dma_alloc_writecombine(NULL, lcd.fd_info42440->fix.smem_len , lcd.fd_info42440->fix.smem_start , GFP_KERNEL);
+	//lcd.lcd_regs.LCDSADDR1 =  ((lcd.fd_info42440->fix.smem_start>>22)<<21) |
+	//
+	lcd_switch(ON);
+	lcd_background_led_switch(ON);	//open the lcd light
+	register_framebuffer(lcd.fd_info42440);
 	return 0;
 }
 
 static void __exit lcd_exit(void)
 {
-	register_blkdev();
+	unregister_framebuffer(lcd.fd_info42440);
+	dma_free_writecombine(NULL,lcd.fd_info42440->fix.smem_len,lcd.fd_info42440->screen_base ,lcd.fd_info42440->fix.smem_start);
+	framebuffer_release(lcd.fd_info42440);
+	iounmap(lcd.lcd_port->gpb_con.vir);
+	iounmap(lcd.lcd_port->gpb_dat.vir);
+	iounmap(lcd.lcd_port->gpc_con.vir);
+	iounmap(lcd.lcd_port->gpc_dat.vir);
+	iounmap(lcd.lcd_port->gpg_con.vir);
+	iounmap(lcd.lcd_port->gpg_dat.vir);
+	iounmap(lcd.lcd_port->gpd_con.vir);
+	iounmap(lcd.lcd_port->gpd_dat.vir);
+	lcd_background_led_switch(OFF);
+	lcd_switch(OFF);
+
 }
 
 module_init(lcd_init);
