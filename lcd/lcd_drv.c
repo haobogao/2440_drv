@@ -39,7 +39,7 @@
 struct reg_addr_t{
 	/* prefix "phy" means physical register address while the "vm" means virtual address
 	 *  which indicate physical address after kernel mmap  */
-	unsigned int vir;
+	unsigned int * vir;
 	unsigned int phy;
 };
 
@@ -80,7 +80,7 @@ struct lcd_port_t{
 };
 
 /*board regs*/
-static struct s3c2440_lcd_regs{
+struct s3c2440_lcd_regs{
 	/*lcdcon1  */
 	unsigned int LCDCON1;
 	unsigned int LCDCON2;		//0X4D000004
@@ -104,17 +104,51 @@ static struct s3c2440_lcd_regs{
 };
 
 
-static struct s3c2440_lcd_struct {
+
+static u32 pseudo_palette[16];
+
+
+/* from pxafb.c */
+static inline unsigned int chan_to_field(unsigned int chan, struct fb_bitfield *bf)
+{
+	chan &= 0xffff;
+	chan >>= 16 - bf->length;
+	return chan << bf->offset;
+}
+
+
+static int s3c_lcdfb_setcolreg(unsigned int regno, unsigned int red,
+			     unsigned int green, unsigned int blue,
+			     unsigned int transp, struct fb_info *info)
+{
+	unsigned int val;
+
+	if (regno > 16)
+		return 1;
+
+	/* 用red,green,blue三原色构造出val */
+	val  = chan_to_field(red,	&info->var.red);
+	val |= chan_to_field(green, &info->var.green);
+	val |= chan_to_field(blue,	&info->var.blue);
+
+	//((u32 *)(info->pseudo_palette))[regno] = val;
+	pseudo_palette[regno] = val;
+	return 0;
+}
+
+
+struct fb_ops fb_ops42440 = {
+		.owner		= THIS_MODULE,
+		.fb_setcolreg	= s3c_lcdfb_setcolreg,
+		.fb_fillrect	= cfb_fillrect,
+		.fb_copyarea	= cfb_copyarea,
+		.fb_imageblit	= cfb_imageblit,
+ };
+ struct s3c2440_lcd_struct {
 	 struct  lcd_port_t * lcd_port;
 	 struct fb_info *fd_info42440;
-	 struct s3c2440_lcd_regs lcd_regs;
-	 struct fb_ops fb_ops42440 = {
-	 	.owner		= THIS_MODULE,
-	 //	.fb_setcolreg	= atmel_lcdfb_setcolreg,
-	 	.fb_fillrect	= cfb_fillrect,
-	 	.fb_copyarea	= cfb_copyarea,
-	 	.fb_imageblit	= cfb_imageblit,
-	 };
+	 struct  s3c2440_lcd_regs * lcd_regs;
+
 };
 
 
@@ -128,9 +162,9 @@ static struct s3c2440_lcd_struct lcd;
 static inline void lcd_background_led_switch(char stat)
 {
 	if(stat == ON){
-		lcd.lcd_port->gpb_dat.vir |= (0x01 << 0);
+		*(lcd.lcd_port->gpb_dat.vir) |= (0x01 << 0);
 	}else if(stat == OFF){
-		lcd.lcd_port->gpb_dat.vir &= ~(0x01 << 0);
+		*(lcd.lcd_port->gpb_dat.vir) &= ~(0x01 << 0);
 	}else
 		printk(KERN_NOTICE"@ lcd_drv.c:lcd_background_led_switch dummy parameter!");
 }
@@ -138,11 +172,11 @@ static inline void lcd_background_led_switch(char stat)
 static inline void lcd_switch(char stat)
 {
 	if(stat == ON){
-		lcd.lcd_regs.LCDCON1 |= (0x01 << 0);
-		lcd.lcd_regs.LCDCON5 |= (0x01<<3);
+		lcd.lcd_regs->LCDCON1 |= (0x01 << 0);
+		lcd.lcd_regs->LCDCON5 |= (0x01<<3);
 	}else if(stat == OFF){
-		lcd.lcd_regs.LCDCON1 &= ~(0x01 << 0);
-		lcd.lcd_regs.LCDCON5 &= ~(0x01<<3);
+		lcd.lcd_regs->LCDCON1 &= ~(0x01 << 0);
+		lcd.lcd_regs->LCDCON5 &= ~(0x01<<3);
 	}else
 		printk(KERN_NOTICE"@ lcd_drv.c:lcd_switch dummy parameter!");
 }
@@ -150,8 +184,25 @@ static inline void lcd_switch(char stat)
 
 static int __init lcd_init(void)
 {
+
+	/*alloc some memory */
+	lcd.lcd_port = kmalloc(sizeof(struct lcd_port_t),GFP_KERNEL);
+	if(lcd.lcd_port == NULL){
+		printk(KERN_NOTICE"alloc lcd_port failed\n");
+		return 0;
+	}
+	lcd.lcd_regs = kmalloc(sizeof(struct s3c2440_lcd_regs),GFP_KERNEL);
+	if(lcd.lcd_regs == NULL){
+		printk(KERN_NOTICE"alloc lcd_regs failed\n");
+		return 0;
+	}
 	/* 1. allocate a  fb_info structure */
 	lcd.fd_info42440 = framebuffer_alloc(0, NULL);
+	if(lcd.fd_info42440 == NULL){
+		printk(KERN_NOTICE"alloc fb_info failed\n");
+		return 0;
+	}
+	printk(KERN_NOTICE"alloc fb_info ok!\n");
 
 	/* 2. set the fucking parameters */
 		/*set  fix*/
@@ -179,7 +230,13 @@ static int __init lcd_init(void)
 
 	lcd.fd_info42440->var.activate       = FB_ACTIVATE_NOW;
 
-
+	lcd.fd_info42440->fbops = &fb_ops42440;
+/*
+ * 	s3c_lcd->pseudo_palette = pseudo_palette;
+	s3c_lcd->screen_size   = 240*324*16/8;
+*/
+	lcd.fd_info42440->pseudo_palette = pseudo_palette;
+	lcd.fd_info42440->screen_size = 272*480*16/2;
 	/*
 	 	* set gpio
 	 		*
@@ -210,7 +267,7 @@ static int __init lcd_init(void)
 	lcd.lcd_port->gpd_dat.phy =0x56000034;
 	lcd.lcd_port->gpg_con.phy = 0x56000060;
 	lcd.lcd_port->gpg_dat.phy = 0x56000064;
-
+	printk(KERN_NOTICE"ready to ioremap!\n");
 		//mmap all regs
 	lcd.lcd_port->gpb_con.vir = ioremap(lcd.lcd_port->gpb_con.phy,16);
 	lcd.lcd_port->gpb_dat.vir = ioremap(lcd.lcd_port->gpb_dat.phy,16);
@@ -220,38 +277,42 @@ static int __init lcd_init(void)
 	lcd.lcd_port->gpd_dat.vir = ioremap(lcd.lcd_port->gpd_dat.phy,16);
 	lcd.lcd_port->gpg_con.vir = ioremap(lcd.lcd_port->gpg_con.phy,16);
 	lcd.lcd_port->gpg_dat.vir = ioremap(lcd.lcd_port->gpg_dat.phy,16);
-	lcd.lcd_regs = ioremap(lcd.lcd_regs,sizeof(struct s3c2440_lcd_regs));
+	lcd.lcd_regs = ioremap(0X4D000000,sizeof(struct s3c2440_lcd_regs));
 
+	printk(KERN_NOTICE"after remap!\n");
 	//set background led
 	//configure gpb  to output mode
-	lcd.lcd_port->gpb_con.vir &= ~(3<<0);			//lowest two bit set to zero
-	lcd.lcd_port->gpb_con.vir |= 0x03;
+	*(lcd.lcd_port->gpb_con.vir) &= ~(3<<0);			//lowest two bit set to zero
+	*(lcd.lcd_port->gpb_con.vir) |= 0x01;
 
 	//set gpg4 to LCD_POWEN .output value of LCD_PWREN pin is controlled by ENVID
-	lcd.lcd_port->gpg_con.vir &= ~(3<< (2*4) );
-	lcd.lcd_port->gpg_con.vir |=	3<<(2*4);
+	*(lcd.lcd_port->gpg_con.vir) &= ~(3<< (2*4) );
+	*(lcd.lcd_port->gpg_con.vir) |=	3<<(2*4);
 
 	/*set HW reg*/
-	lcd.lcd_regs.LCDCON1 =4<<8|0x03<<5|0x0c<<1;
-	lcd.lcd_regs.LCDCON2 = LCD_LINEVAL|LCD_VBPD|LCD_VFPD|LCD_VSPW;
-	lcd.lcd_regs.LCDCON3 = 2<<19|479<<8|2;
-	lcd.lcd_regs.LCDCON4 = 41;
-	lcd.lcd_regs.LCDCON5 = 1<<11;
+	lcd.lcd_regs->LCDCON1 =4<<8|0x03<<5|0x0c<<1;
+	lcd.lcd_regs->LCDCON2 = LCD_LINEVAL|LCD_VBPD|LCD_VFPD|LCD_VSPW;
+	lcd.lcd_regs->LCDCON3 = 2<<19|479<<8|2;
+	lcd.lcd_regs->LCDCON4 = 41;
+	lcd.lcd_regs->LCDCON5 = 1<<11;
 
 	/*allocate the frame buff*/
-	lcd.fd_info42440->screen_base = dma_alloc_writecombine(NULL, lcd.fd_info42440->fix.smem_len , lcd.fd_info42440->fix.smem_start , GFP_KERNEL);
-	lcd.lcd_regs.LCDSADDR1 = ( lcd.fd_info42440->fix.smem_start >>1 )  & ~(0x03<<30);
-//	LCDBASEL = LCDBASEU + (PAGEWIDTH + OFFSIZE) �� (LINEVAL + 1)
-	lcd.lcd_regs.LCDSADDR2 = ( ( (lcd.fd_info42440->fix.smem_start + lcd.fd_info42440->fix.smem_len ) >> 1 + 1 )  & 0x1fffff );
-	lcd.lcd_regs.LCDSADDR3 = 272*16/16;
+	lcd.fd_info42440->screen_base = dma_alloc_writecombine(NULL, lcd.fd_info42440->fix.smem_len , (dma_addr_t)&(lcd.fd_info42440->fix.smem_start) , GFP_KERNEL);
+	lcd.lcd_regs->LCDSADDR1 = ( lcd.fd_info42440->fix.smem_start >>1 )  & ~(0x03<<30);
+//	LCDBASEL = LCDBASEU + (PAGEWIDTH + OFFSIZE) �� (LINEVAL + 1)
+	lcd.lcd_regs->LCDSADDR2 = ( (( (lcd.fd_info42440->fix.smem_start + lcd.fd_info42440->fix.smem_len ) >> 1 )+ 1 )  & 0x1fffff );
+	lcd.lcd_regs->LCDSADDR3 = 272*16/16;
 	lcd_switch(ON);
 	lcd_background_led_switch(ON);	//open the lcd light
+	printk(KERN_NOTICE"ready to register!\n");
 	register_framebuffer(lcd.fd_info42440);
 	return 0;
 }
 
 static void __exit lcd_exit(void)
 {
+	lcd_background_led_switch(OFF);
+	lcd_switch(OFF);
 	unregister_framebuffer(lcd.fd_info42440);
 	dma_free_writecombine(NULL,lcd.fd_info42440->fix.smem_len,lcd.fd_info42440->screen_base ,lcd.fd_info42440->fix.smem_start);
 	framebuffer_release(lcd.fd_info42440);
@@ -263,8 +324,7 @@ static void __exit lcd_exit(void)
 	iounmap(lcd.lcd_port->gpg_dat.vir);
 	iounmap(lcd.lcd_port->gpd_con.vir);
 	iounmap(lcd.lcd_port->gpd_dat.vir);
-	lcd_background_led_switch(OFF);
-	lcd_switch(OFF);
+
 
 }
 
@@ -272,3 +332,4 @@ module_init(lcd_init);
 module_exit(lcd_exit);
 
 MODULE_LICENSE("GPL v2");
+

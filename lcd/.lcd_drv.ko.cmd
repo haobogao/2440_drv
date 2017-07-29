@@ -1,0 +1,1 @@
+cmd_/home/haobo/linux_2.26_eclipse_project/drivers/drvtest/2440_driver/lcd/lcd_drv.ko := arm-linux-ld -EL  -r -o /home/haobo/linux_2.26_eclipse_project/drivers/drvtest/2440_driver/lcd/lcd_drv.ko /home/haobo/linux_2.26_eclipse_project/drivers/drvtest/2440_driver/lcd/lcd_drv.o /home/haobo/linux_2.26_eclipse_project/drivers/drvtest/2440_driver/lcd/lcd_drv.mod.o
