@@ -79,7 +79,7 @@ static int test_blk_release(struct inode *inode, struct file * file)
 
 int test_blk_media_changed (struct gendisk * disk)
 {
-	struct test_blk_t dev = disk->private_data;
+	struct test_blk_t * dev = disk->private_data;
 
 	return  dev->flag_media_changed;
 }
@@ -90,16 +90,16 @@ int test_blk_media_changed (struct gendisk * disk)
  */
 void test_blk_revalidate(struct gendisk * disk )
 {
-	struct test_blk_t dev = disk->private_data;
+	struct test_blk_t * dev = disk->private_data;
 	if(dev->flag_media_changed){
 		dev->flag_media_changed = 0;
 		memset(dev->data,0,dev->size);
 	}
-	return 0;
+	return ;
 }
 int test_blk_ioctl (struct inode * inode, struct file * file , unsigned cmd, unsigned long arg)
 {
-	struct test_blk_t dev = inode ->i_bdev->bd_disk->private_data;
+	struct test_blk_t * dev = inode ->i_bdev->bd_disk->private_data;
 	struct  hd_geometry geo;
 	long size;
 	switch(cmd){
@@ -129,12 +129,44 @@ struct block_device_operations blk_dev_ops = {
 };
 
 
+
+static void test_blk_transfer(struct test_blk_t * dev,unsigned long sector,unsigned long nsect,char * buffer,int write)
+{
+	unsigned long offset = sector * CUR_SECTOR_SIZE;
+	unsigned long nbytes = nsect * CUR_SECTOR_SIZE;
+	if( (offset+nbytes) > dev->size){
+		printk(KERN_NOTICE"Beyond-end write (%ld , %ld) \n",offset,nbytes);
+		return ;
+	}
+	if(write)
+		memcpy(dev->data* offset,buffer,nbytes);
+	else
+		memcpy(buffer,dev->data+offset,nbytes);
+}
+
 /*
  	 *@ This function was binded with request queue
  	 *
  */
-void test_blk_request(request_queue_t q)
+static void test_blk_request(request_queue_t q)
 {
+	struct request * req;
+	while( ( req = elv_next_request(q) ) != NULL ){
+		struct test_blk_t *dev = req->rq_disk->private_data;
+		/*
+		 *  if not a file system based request just skip and continue
+		*/
+		if( ! blk_fs_request(req) ){
+			printk(KERN_WARNING"skip non-fs request\n");
+			end_request(req,0);			//can't handle
+			continue;
+		}
+		/*
+		 * handle the fs request
+		 */
+		 test_blk_transfer(dev,req->sector,req->current_nr_sectors,req->buffer,rq_data_dir(req));
+		 end_request(req,1);
+	}
 
 }
 /*
@@ -143,12 +175,12 @@ void test_blk_request(request_queue_t q)
  */
 void timer_function(unsigned long par)
 {
-	struct test_blk_t dev = (struct test_blk_t *) par;
+	struct test_blk_t * dev = (struct test_blk_t *) par;
 	spin_lock( &(dev->spinlock) );
 	if(dev->user_count || !dev->data)
 		printk(KERN_WARNING"test_blk: timer check failed ! some thing going wrong!\n");
 	else
-		dev->flag_media_changed
+		dev->flag_media_changed = 1;
 	spin_unlock( &(dev->spinlock) );
 
 }
